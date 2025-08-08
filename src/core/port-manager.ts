@@ -13,6 +13,15 @@ export class PortManager {
   private adapter: BaseAdapter | null = null;
   private _initialized = false;
   private readonly logger = createLogger('PortManager');
+  private readonly getPlatformAdapterFn: () => Promise<any>;
+
+  constructor(adapter?: BaseAdapter, getPlatformAdapterFn?: () => Promise<any>) {
+    if (adapter) {
+      this.adapter = adapter;
+      this._initialized = true;
+    }
+    this.getPlatformAdapterFn = getPlatformAdapterFn || getPlatformAdapter;
+  }
 
   /**
    * Initialize the port manager with the appropriate platform adapter
@@ -26,11 +35,27 @@ export class PortManager {
 
     try {
       this.logger.debug('Initializing port manager');
-      const AdapterClass = await getPlatformAdapter() as new () => BaseAdapter;
-      this.adapter = new AdapterClass();
+      const AdapterClassOrInstance = await this.getPlatformAdapterFn();
+      
+
+      
+      // Handle both class constructors and direct instances (for testing)
+      if (typeof AdapterClassOrInstance === 'function') {
+        this.adapter = new AdapterClassOrInstance();
+      } else if (AdapterClassOrInstance && typeof AdapterClassOrInstance === 'object') {
+        // For testing - when getPlatformAdapter returns a mock instance
+        this.adapter = AdapterClassOrInstance as BaseAdapter;
+      } else {
+        throw new Error('Invalid adapter returned from getPlatformAdapter');
+      }
+      
       this.logger.debug('Platform adapter obtained:', { platform: process.platform });
       
       // Verify adapter compatibility
+      if (!this.adapter) {
+        throw new SystemError('Failed to create adapter instance');
+      }
+      
       const isCompatible = await this.adapter.isCompatible();
       if (!isCompatible) {
         this.logger.error('Platform adapter is not compatible with current system');
@@ -70,7 +95,7 @@ export class PortManager {
     try {
       const processes = await this.adapter.findProcessByPort(validPort);
       this.logger.debug('Port check completed:', { port: validPort, processCount: processes.length });
-      return processes;
+      return processes || [];
     } catch (error: unknown) {
       const err = error as Error;
       this.logger.error('Port check failed:', { port: validPort, error: err.message });
@@ -161,8 +186,29 @@ export class PortManager {
    * @throws If port number is invalid or port lookup fails
    */
   async isPortAvailable(port: number | string): Promise<boolean> {
-    const processes = await this.checkPort(port);
-    return processes.length === 0;
+    // Validate port number
+    const validPort = validatePort(port);
+    
+    // Ensure adapter is initialized
+    await this.initialize();
+    
+    if (!this.adapter) {
+      throw new SystemError('Port manager adapter not initialized');
+    }
+    
+    try {
+      const processes = await this.adapter.findProcessByPort(validPort);
+      return !processes || processes.length === 0;
+    } catch (error: unknown) {
+      const err = error as Error;
+      
+      if (error instanceof SystemError || error instanceof ValidationError || 
+          error instanceof PermissionError || error instanceof NetworkError) {
+        throw error;
+      }
+      
+      throw new SystemError(`Failed to check port availability ${validPort}: ${err.message}`);
+    }
   }
 
   /**

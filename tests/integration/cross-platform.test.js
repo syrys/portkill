@@ -1,8 +1,10 @@
-const PlatformDetector = require('../../src/utils/platform-detector');
+// Mock the os module
+const mockPlatform = jest.fn();
+jest.mock('os', () => ({
+  platform: mockPlatform
+}));
 
-// Mock os module for platform detection
-jest.mock('os');
-const os = require('os');
+const PlatformDetector = require('../../src/utils/platform-detector');
 
 describe('Cross-Platform Integration Tests', () => {
   beforeEach(() => {
@@ -11,7 +13,7 @@ describe('Cross-Platform Integration Tests', () => {
 
   describe('Platform Detection Integration', () => {
     it('should detect Windows platform correctly', () => {
-      os.platform.mockReturnValue('win32');
+      mockPlatform.mockReturnValue('win32');
       
       const platform = PlatformDetector.detectPlatform();
       expect(platform).toBe('windows');
@@ -19,44 +21,45 @@ describe('Cross-Platform Integration Tests', () => {
 
     it('should detect Unix platforms correctly', () => {
       // Test Linux
-      os.platform.mockReturnValue('linux');
+      mockPlatform.mockReturnValue('linux');
       const linuxPlatform = PlatformDetector.detectPlatform();
       expect(linuxPlatform).toBe('unix');
 
       // Test macOS
-      os.platform.mockReturnValue('darwin');
+      mockPlatform.mockReturnValue('darwin');
       const macosPlatform = PlatformDetector.detectPlatform();
       expect(macosPlatform).toBe('unix');
     });
 
     it('should throw error for unsupported platform', () => {
-      os.platform.mockReturnValue('freebsd');
+      mockPlatform.mockReturnValue('freebsd');
 
       expect(() => {
         PlatformDetector.detectPlatform();
       }).toThrow('Unsupported platform: freebsd');
     });
 
-    it('should return appropriate adapter for Windows', () => {
-      os.platform.mockReturnValue('win32');
+    it('should return appropriate adapter for Windows', async () => {
+      mockPlatform.mockReturnValue('win32');
       
-      const adapter = PlatformDetector.getPlatformAdapter();
+      const AdapterClass = await PlatformDetector.getPlatformAdapter();
+      const adapter = new AdapterClass();
       expect(adapter).toBeDefined();
       expect(typeof adapter.findProcessByPort).toBe('function');
       expect(typeof adapter.killProcess).toBe('function');
       expect(typeof adapter.isCompatible).toBe('function');
     });
 
-    it('should return appropriate adapter for Unix', () => {
-      os.platform.mockReturnValue('linux');
+    it('should return appropriate adapter for Unix', async () => {
+      mockPlatform.mockReturnValue('linux');
       
-      const adapter = PlatformDetector.getPlatformAdapter();
+      const AdapterClass = await PlatformDetector.getPlatformAdapter();
+      const adapter = new AdapterClass();
       expect(adapter).toBeDefined();
       expect(typeof adapter.findProcessByPort).toBe('function');
       expect(typeof adapter.killProcess).toBe('function');
       expect(typeof adapter.isCompatible).toBe('function');
     });
   });
-
 
 });

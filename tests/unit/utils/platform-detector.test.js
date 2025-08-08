@@ -1,8 +1,10 @@
-const os = require('os');
-const platformDetector = require('../../../src/utils/platform-detector');
-
 // Mock the os module
-jest.mock('os');
+const mockPlatform = jest.fn();
+jest.mock('os', () => ({
+  platform: mockPlatform
+}));
+
+const { detectPlatform, getPlatformAdapter } = require('../../../src/utils/platform-detector');
 
 describe('Platform Detector', () => {
   beforeEach(() => {
@@ -11,72 +13,70 @@ describe('Platform Detector', () => {
 
   describe('detectPlatform', () => {
     it('should return "windows" for win32 platform', () => {
-      os.platform.mockReturnValue('win32');
+      mockPlatform.mockReturnValue('win32');
       
-      const result = platformDetector.detectPlatform();
+      const result = detectPlatform();
       
       expect(result).toBe('windows');
     });
 
     it('should return "unix" for linux platform', () => {
-      os.platform.mockReturnValue('linux');
+      mockPlatform.mockReturnValue('linux');
       
-      const result = platformDetector.detectPlatform();
+      const result = detectPlatform();
       
       expect(result).toBe('unix');
     });
 
     it('should return "unix" for darwin platform', () => {
-      os.platform.mockReturnValue('darwin');
+      mockPlatform.mockReturnValue('darwin');
       
-      const result = platformDetector.detectPlatform();
+      const result = detectPlatform();
       
       expect(result).toBe('unix');
     });
 
     it('should throw error for unsupported platform', () => {
-      os.platform.mockReturnValue('freebsd');
+      mockPlatform.mockReturnValue('freebsd');
       
       expect(() => {
-        platformDetector.detectPlatform();
+        detectPlatform();
       }).toThrow('Unsupported platform: freebsd');
     });
   });
 
   describe('getPlatformAdapter', () => {
-    it('should return windows adapter for win32 platform', () => {
-      os.platform.mockReturnValue('win32');
+    it('should return windows adapter for win32 platform', async () => {
+      mockPlatform.mockReturnValue('win32');
       
-      const adapter = platformDetector.getPlatformAdapter();
-      
-      expect(adapter).toBeDefined();
-      expect(adapter.constructor.name).toBe('WindowsAdapter');
-    });
-
-    it('should return unix adapter for linux platform', () => {
-      os.platform.mockReturnValue('linux');
-      
-      const adapter = platformDetector.getPlatformAdapter();
+      const adapter = await getPlatformAdapter();
       
       expect(adapter).toBeDefined();
-      expect(adapter.constructor.name).toBe('UnixAdapter');
+      expect(adapter.name).toBe('WindowsAdapter');
     });
 
-    it('should return unix adapter for darwin platform', () => {
-      os.platform.mockReturnValue('darwin');
+    it('should return unix adapter for linux platform', async () => {
+      mockPlatform.mockReturnValue('linux');
       
-      const adapter = platformDetector.getPlatformAdapter();
+      const adapter = await getPlatformAdapter();
       
       expect(adapter).toBeDefined();
-      expect(adapter.constructor.name).toBe('UnixAdapter');
+      expect(adapter.name).toBe('UnixAdapter');
     });
 
-    it('should throw error for unsupported platform', () => {
-      os.platform.mockReturnValue('freebsd');
+    it('should return unix adapter for darwin platform', async () => {
+      mockPlatform.mockReturnValue('darwin');
       
-      expect(() => {
-        platformDetector.getPlatformAdapter();
-      }).toThrow('Unsupported platform: freebsd');
+      const adapter = await getPlatformAdapter();
+      
+      expect(adapter).toBeDefined();
+      expect(adapter.name).toBe('UnixAdapter');
+    });
+
+    it('should throw error for unsupported platform', async () => {
+      mockPlatform.mockReturnValue('freebsd');
+      
+      await expect(getPlatformAdapter()).rejects.toThrow('Unsupported platform: freebsd');
     });
   });
 });

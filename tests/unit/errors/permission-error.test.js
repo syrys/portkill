@@ -1,4 +1,4 @@
-const PermissionError = require('../../../src/errors/permission-error');
+const { PermissionError } = require('../../../src/errors/permission-error');
 
 describe('PermissionError', () => {
   it('should create error with correct properties', () => {

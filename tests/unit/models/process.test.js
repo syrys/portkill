@@ -1,4 +1,4 @@
-const Process = require('../../../src/models/process');
+const { Process } = require('../../../src/models/process');
 
 describe('Process Model', () => {
   const validProcessData = {

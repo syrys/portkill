@@ -1,4 +1,4 @@
-const ValidationError = require('../../../src/errors/validation-error');
+const { ValidationError } = require('../../../src/errors/validation-error');
 
 describe('ValidationError', () => {
   it('should create error with correct properties', () => {

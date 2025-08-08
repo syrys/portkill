@@ -1,4 +1,4 @@
-const Process = require('../../../src/models/process');
+const { Process } = require('../../../src/models/process');
 const { SystemError, PermissionError, ValidationError } = require('../../../src/errors');
 
 // Mock child_process before requiring the adapter
@@ -14,13 +14,13 @@ jest.mock('util', () => ({
 }));
 
 // Now require the adapter after mocking
-const UnixAdapter = require('../../../src/adapters/unix-adapter');
+const { UnixAdapter } = require('../../../src/adapters/unix-adapter');
 
 describe('UnixAdapter', () => {
   let adapter;
   
   beforeEach(() => {
-    adapter = UnixAdapter;
+    adapter = new UnixAdapter();
     jest.clearAllMocks();
   });
 

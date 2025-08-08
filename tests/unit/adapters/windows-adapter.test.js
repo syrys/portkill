@@ -1,4 +1,4 @@
-const Process = require('../../../src/models/process');
+const { Process } = require('../../../src/models/process');
 const { SystemError, PermissionError, ValidationError } = require('../../../src/errors');
 
 // Mock child_process before requiring the adapter
@@ -14,13 +14,13 @@ jest.mock('util', () => ({
 }));
 
 // Now require the adapter after mocking
-const WindowsAdapter = require('../../../src/adapters/windows-adapter');
+const { WindowsAdapter } = require('../../../src/adapters/windows-adapter');
 
 describe('WindowsAdapter', () => {
   let adapter;
   
   beforeEach(() => {
-    adapter = WindowsAdapter;
+    adapter = new WindowsAdapter();
     jest.clearAllMocks();
   });
 

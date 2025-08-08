@@ -1,4 +1,4 @@
-const NetworkError = require('../../../src/errors/network-error');
+const { NetworkError } = require('../../../src/errors/network-error');
 
 describe('NetworkError', () => {
   it('should create error with correct properties', () => {

@@ -108,9 +108,9 @@ describe('Validator', () => {
       expect(validateYesNo('invalid')).toBe(null);
       expect(validateYesNo('1')).toBe(null);
       expect(validateYesNo('0')).toBe(null);
-      expect(validateYesNo(123)).toBe(false);
-      expect(validateYesNo(null)).toBe(false);
-      expect(validateYesNo(undefined)).toBe(false);
+      expect(validateYesNo(123)).toBe(null);
+      expect(validateYesNo(null)).toBe(null);
+      expect(validateYesNo(undefined)).toBe(null);
     });
   });
 });

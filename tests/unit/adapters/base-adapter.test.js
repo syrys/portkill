@@ -1,10 +1,29 @@
-const BaseAdapter = require('../../../src/adapters/base-adapter');
+const { BaseAdapter } = require('../../../src/adapters/base-adapter');
+
+// Create a concrete test implementation since BaseAdapter is abstract
+class TestAdapter extends BaseAdapter {
+  async findProcessByPort(port) {
+    throw new Error('findProcessByPort method must be implemented by platform adapter');
+  }
+
+  async getProcessDetails(pid) {
+    throw new Error('getProcessDetails method must be implemented by platform adapter');
+  }
+
+  async killProcess(pid) {
+    throw new Error('killProcess method must be implemented by platform adapter');
+  }
+
+  async isCompatible() {
+    throw new Error('isCompatible method must be implemented by platform adapter');
+  }
+}
 
 describe('BaseAdapter', () => {
   let adapter;
 
   beforeEach(() => {
-    adapter = new BaseAdapter();
+    adapter = new TestAdapter();
   });
 
   describe('interface methods', () => {

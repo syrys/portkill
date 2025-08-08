@@ -1,4 +1,4 @@
-const SystemError = require('../../../src/errors/system-error');
+const { SystemError } = require('../../../src/errors/system-error');
 
 describe('SystemError', () => {
   it('should create error with correct properties', () => {

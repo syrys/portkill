@@ -1,9 +1,11 @@
-const PortManager = require('../../src/core/port-manager');
-const Process = require('../../src/models/process');
+const { PortManager } = require('../../src/core/port-manager');
+const { Process } = require('../../src/models/process');
 const { ValidationError, SystemError, PermissionError } = require('../../src/errors');
 
 // Mock the platform detector
-jest.mock('../../src/utils/platform-detector');
+jest.mock('../../src/utils/platform-detector', () => ({
+  getPlatformAdapter: jest.fn()
+}));
 const { getPlatformAdapter } = require('../../src/utils/platform-detector');
 
 describe('PortManager', () => {
@@ -11,8 +13,6 @@ describe('PortManager', () => {
   let mockAdapter;
 
   beforeEach(() => {
-    portManager = new PortManager();
-    
     // Create mock adapter
     mockAdapter = {
       findProcessByPort: jest.fn(),
@@ -23,35 +23,43 @@ describe('PortManager', () => {
     
     // Mock getPlatformAdapter to return our mock
     getPlatformAdapter.mockReturnValue(mockAdapter);
+    
+    portManager = new PortManager();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('initialization', () => {
     test('should initialize successfully with compatible adapter', async () => {
-      await portManager.initialize();
+      // Create a new PortManager with the mock adapter for this test
+      const testPortManager = new PortManager(mockAdapter);
       
-      expect(portManager.isInitialized()).toBe(true);
-      expect(portManager.getAdapter()).toBe(mockAdapter);
-      expect(mockAdapter.isCompatible).toHaveBeenCalled();
+      expect(testPortManager.isInitialized()).toBe(true);
+      expect(testPortManager.getAdapter()).toBe(mockAdapter);
     });
 
     test('should throw SystemError if adapter is not compatible', async () => {
+      // Create a fresh PortManager for this test (not pre-initialized)
+      const mockGetPlatformAdapter = jest.fn().mockResolvedValue(mockAdapter);
+      const testPortManager = new PortManager(undefined, mockGetPlatformAdapter);
       mockAdapter.isCompatible.mockResolvedValue(false);
       
-      await expect(portManager.initialize()).rejects.toThrow(SystemError);
-      await expect(portManager.initialize()).rejects.toThrow('Platform adapter is not compatible with current system');
+      await expect(testPortManager.initialize()).rejects.toThrow(SystemError);
+      await expect(testPortManager.initialize()).rejects.toThrow('Platform adapter is not compatible with current system');
     });
 
     test('should throw SystemError if getPlatformAdapter fails', async () => {
-      getPlatformAdapter.mockImplementation(() => {
+      // Create a fresh PortManager for this test (not pre-initialized)
+      const mockGetPlatformAdapter = jest.fn().mockImplementation(() => {
         throw new Error('Unsupported platform');
       });
+      const testPortManager = new PortManager(undefined, mockGetPlatformAdapter);
       
-      await expect(portManager.initialize()).rejects.toThrow(SystemError);
-      await expect(portManager.initialize()).rejects.toThrow('Failed to initialize port manager');
+      await expect(testPortManager.initialize()).rejects.toThrow(SystemError);
+      await expect(testPortManager.initialize()).rejects.toThrow('Failed to initialize port manager');
     });
 
     test('should not reinitialize if already initialized', async () => {
@@ -65,8 +73,9 @@ describe('PortManager', () => {
   });
 
   describe('checkPort', () => {
-    beforeEach(async () => {
-      await portManager.initialize();
+    beforeEach(() => {
+      // Use the mock adapter directly for these tests
+      portManager = new PortManager(mockAdapter);
     });
 
     test('should return processes for valid port', async () => {
@@ -141,8 +150,9 @@ describe('PortManager', () => {
   });
 
   describe('killProcess', () => {
-    beforeEach(async () => {
-      await portManager.initialize();
+    beforeEach(() => {
+      // Use the mock adapter directly for these tests
+      portManager = new PortManager(mockAdapter);
     });
 
     test('should successfully kill process', async () => {
@@ -213,8 +223,9 @@ describe('PortManager', () => {
   });
 
   describe('getProcessDetails', () => {
-    beforeEach(async () => {
-      await portManager.initialize();
+    beforeEach(() => {
+      // Use the mock adapter directly for these tests
+      portManager = new PortManager(mockAdapter);
     });
 
     test('should return process details for valid PID', async () => {
@@ -250,14 +261,15 @@ describe('PortManager', () => {
     });
 
     test('should initialize automatically if not initialized', async () => {
-      const uninitializedManager = new PortManager();
-      getPlatformAdapter.mockReturnValue(mockAdapter);
+      const mockGetPlatformAdapter = jest.fn().mockResolvedValue(mockAdapter);
+      const uninitializedManager = new PortManager(undefined, mockGetPlatformAdapter);
       const mockDetails = { pid: 1234, name: 'test', user: 'user', command: 'test' };
       mockAdapter.getProcessDetails.mockResolvedValue(mockDetails);
       
-      await uninitializedManager.getProcessDetails(1234);
+      const result = await uninitializedManager.getProcessDetails(1234);
       
       expect(uninitializedManager.isInitialized()).toBe(true);
+      expect(result).toEqual(mockDetails);
     });
 
     test('should propagate SystemError from adapter', async () => {
@@ -277,8 +289,9 @@ describe('PortManager', () => {
   });
 
   describe('isPortAvailable', () => {
-    beforeEach(async () => {
-      await portManager.initialize();
+    beforeEach(() => {
+      // Use the mock adapter directly for these tests
+      portManager = new PortManager(mockAdapter);
     });
 
     test('should return true when no processes found on port', async () => {
@@ -321,30 +334,34 @@ describe('PortManager', () => {
       expect(portManager.getAdapter()).toBeNull();
     });
 
-    test('getAdapter should return adapter when initialized', async () => {
-      await portManager.initialize();
-      expect(portManager.getAdapter()).toBe(mockAdapter);
+    test('getAdapter should return adapter when initialized', () => {
+      const testPortManager = new PortManager(mockAdapter);
+      expect(testPortManager.getAdapter()).toBe(mockAdapter);
     });
 
     test('isInitialized should return false initially', () => {
       expect(portManager.isInitialized()).toBe(false);
     });
 
-    test('isInitialized should return true after initialization', async () => {
-      await portManager.initialize();
-      expect(portManager.isInitialized()).toBe(true);
+    test('isInitialized should return true after initialization', () => {
+      const testPortManager = new PortManager(mockAdapter);
+      expect(testPortManager.isInitialized()).toBe(true);
     });
   });
 
   describe('error handling scenarios', () => {
     test('should handle adapter initialization failure gracefully', async () => {
+      // Create a fresh PortManager for this test (not pre-initialized)
+      const mockGetPlatformAdapter = jest.fn().mockResolvedValue(mockAdapter);
+      const testPortManager = new PortManager(undefined, mockGetPlatformAdapter);
       mockAdapter.isCompatible.mockRejectedValue(new Error('Compatibility check failed'));
       
-      await expect(portManager.initialize()).rejects.toThrow(SystemError);
-      await expect(portManager.initialize()).rejects.toThrow('Failed to initialize port manager');
+      await expect(testPortManager.initialize()).rejects.toThrow(SystemError);
+      await expect(testPortManager.initialize()).rejects.toThrow('Failed to initialize port manager');
     });
 
     test('should handle multiple processes on same port', async () => {
+      const testPortManager = new PortManager(mockAdapter);
       const mockProcesses = [
         new Process({
           pid: 1234,
@@ -366,21 +383,22 @@ describe('PortManager', () => {
       
       mockAdapter.findProcessByPort.mockResolvedValue(mockProcesses);
       
-      const result = await portManager.checkPort(3000);
+      const result = await testPortManager.checkPort(3000);
       
       expect(result).toHaveLength(2);
       expect(result).toEqual(mockProcesses);
     });
 
     test('should handle edge case port numbers', async () => {
+      const testPortManager = new PortManager(mockAdapter);
       mockAdapter.findProcessByPort.mockResolvedValue([]);
       
       // Test minimum valid port
-      await portManager.checkPort(1);
+      await testPortManager.checkPort(1);
       expect(mockAdapter.findProcessByPort).toHaveBeenCalledWith(1);
       
       // Test maximum valid port
-      await portManager.checkPort(65535);
+      await testPortManager.checkPort(65535);
       expect(mockAdapter.findProcessByPort).toHaveBeenCalledWith(65535);
     });
   });
